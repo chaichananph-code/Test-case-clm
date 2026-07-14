@@ -335,10 +335,17 @@ function toggleTheme(){
   document.getElementById('themeBtn').textContent = isDark ? '🌙 Dark' : '☀️ Light';
 }
 
+const SCENARIO_ORDER = ['FIRE', 'BI-FIRE', 'IAR', 'BI-IAR', 'LH'];
+function scenarioOrderIndex(name){
+  const m = name.match(/\(([^)]+)\)/);
+  const key = (m ? m[1] : name).toUpperCase();
+  const idx = SCENARIO_ORDER.indexOf(key);
+  return idx === -1 ? SCENARIO_ORDER.length : idx;
+}
 function scenarioList(){
   const map = {};
   TC_DATA.forEach(tc => { map[tc.scenarioName] = (map[tc.scenarioName]||0) + 1; });
-  return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0]));
+  return Object.entries(map).sort((a,b)=> scenarioOrderIndex(a[0]) - scenarioOrderIndex(b[0]));
 }
 
 function renderTabs(){
