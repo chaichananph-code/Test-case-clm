@@ -5,34 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TC Tracker — Claim Prop Testing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
   :root{
-    --paper:#F3EFE6;
-    --paper-2:#EAE3D2;
-    --ink:#232323;
-    --ink-soft:#5B564C;
-    --navy:#1D2B45;
-    --navy-2:#28395A;
-    --rust:#B0472B;
-    --rust-soft:#E8C9BC;
-    --line:#D9D2C0;
-    --card:#FFFDF8;
-    --shadow: 0 1px 0 rgba(0,0,0,0.06);
-    --radius: 3px;
+    --paper:#F4F5FC;
+    --paper-2:#EAEBFA;
+    --ink:#1E1B3A;
+    --ink-soft:#6B6F8F;
+    --navy:#4F46E5;
+    --navy-2:#9333EA;
+    --rust:#EC4899;
+    --rust-soft:#FCE7F3;
+    --line:#E1E3F5;
+    --card:#FFFFFF;
+    --shadow: 0 1px 2px rgba(79,70,229,0.06);
+    --radius: 10px;
   }
   [data-theme="dark"]{
-    --paper:#14171C;
-    --paper-2:#1B1F26;
-    --ink:#EDEAE1;
-    --ink-soft:#9B968A;
-    --navy:#EDEAE1;
-    --navy-2:#C7C2B6;
-    --rust:#E1794F;
-    --rust-soft:#3A2A24;
-    --line:#33363E;
-    --card:#1D2128;
+    --paper:#0F1020;
+    --paper-2:#171933;
+    --ink:#ECEBFF;
+    --ink-soft:#9B9BC7;
+    --navy:#818CF8;
+    --navy-2:#C084FC;
+    --rust:#F472B6;
+    --rust-soft:#3B1E33;
+    --line:#2A2C4E;
+    --card:#1B1D3A;
   }
   *{box-sizing:border-box;}
   body{
@@ -44,39 +44,46 @@
     transition:background .25s, color .25s;
   }
   .topbar{
-    background:var(--navy);
-    color:var(--paper);
-    padding:22px 28px 18px;
+    background:linear-gradient(120deg, #4338CA 0%, #6D28D9 55%, #9333EA 100%);
+    color:#F5F3FF;
+    padding:26px 28px 20px;
     position:relative;
     overflow:hidden;
   }
-  [data-theme="dark"] .topbar{ background:#0C0E11; color:var(--ink); border-bottom:1px solid var(--line);}
+  [data-theme="dark"] .topbar{ background:linear-gradient(120deg, #1E1B4B 0%, #3B2A6B 55%, #4C1D6B 100%); color:var(--ink); border-bottom:1px solid var(--line);}
   .topbar::after{
     content:"";
-    position:absolute; right:-40px; top:-40px; width:180px; height:180px;
-    border:1px solid rgba(243,239,230,0.12); border-radius:50%;
+    position:absolute; right:-60px; top:-60px; width:220px; height:220px;
+    background:radial-gradient(circle, rgba(255,255,255,0.16), transparent 70%);
+    border-radius:50%;
+  }
+  .topbar::before{
+    content:"";
+    position:absolute; left:20%; bottom:-80px; width:200px; height:200px;
+    background:radial-gradient(circle, rgba(236,72,153,0.25), transparent 70%);
+    border-radius:50%;
   }
   .topbar-inner{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; position:relative; z-index:1;}
   .eyebrow{
     font-family:'IBM Plex Mono',monospace;
     font-size:11px; letter-spacing:.14em; text-transform:uppercase;
-    opacity:.65; margin:0 0 6px;
+    opacity:.75; margin:0 0 6px;
   }
   h1{
-    font-family:'Zilla Slab',serif; font-weight:600;
-    font-size:28px; margin:0; letter-spacing:.01em;
+    font-family:'Inter',sans-serif; font-weight:800; letter-spacing:-.02em;
+    font-size:28px; margin:0;
   }
   .stamp-toggle{
     display:flex; align-items:center; gap:10px;
     font-family:'IBM Plex Mono',monospace; font-size:12px;
   }
   #themeBtn, .upload-btn{
-    background:transparent; border:1px solid rgba(243,239,230,0.4); color:inherit;
+    background:transparent; border:1px solid rgba(255,255,255,0.5); color:inherit;
     padding:7px 12px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px;
     display:inline-block;
   }
   [data-theme="dark"] #themeBtn, [data-theme="dark"] .upload-btn{ border-color: var(--line); }
-  #themeBtn:hover, .upload-btn:hover{ background:rgba(243,239,230,0.08); }
+  #themeBtn:hover, .upload-btn:hover{ background:rgba(255,255,255,0.14); }
   .data-info{
     margin:10px 0 0; font-family:'IBM Plex Mono',monospace; font-size:11px; opacity:.6;
     display:flex; gap:14px; align-items:center;
@@ -97,7 +104,7 @@
     display:flex; gap:22px; margin-top:16px; flex-wrap:wrap;
   }
   .status-strip .metric{ }
-  .status-strip .num{ font-family:'Zilla Slab',serif; font-size:22px; font-weight:600; line-height:1;}
+  .status-strip .num{ font-family:'Inter',sans-serif; font-size:22px; font-weight:800; line-height:1;}
   .status-strip .lbl{ font-size:11px; opacity:.7; margin-top:3px; font-family:'IBM Plex Mono',monospace; letter-spacing:.05em;}
 
   .wrap{ max-width:1180px; margin:0 auto; padding:24px 28px 60px; }
@@ -113,7 +120,8 @@
     background:var(--paper-2);
     border:1px solid var(--line);
     border-bottom:none;
-    border-radius:6px 6px 0 0;
+    border-top:3px solid transparent;
+    border-radius:8px 8px 0 0;
     cursor:pointer;
     color:var(--ink-soft);
     position:relative;
@@ -122,13 +130,14 @@
   }
   .tab .count{
     display:inline-block; margin-left:6px; padding:1px 6px;
-    background:var(--line); border-radius:999px; font-size:10.5px; color:var(--ink);
+    background:var(--accent-soft, var(--line)); color:var(--accent, var(--ink)); border-radius:999px; font-size:10.5px; font-weight:600;
   }
   .tab.active{
     background:var(--card); color:var(--ink); border-color:var(--line);
-    border-bottom:2px solid var(--card); font-weight:600;
+    border-top-color:var(--accent, var(--navy));
+    border-bottom:2px solid var(--card); font-weight:700;
   }
-  .tab.active .count{ background:var(--rust); color:#fff; }
+  .tab.active .count{ background:var(--accent, var(--rust)); color:#fff; }
   .tab:hover:not(.active){ color:var(--ink); }
 
   .search-row{
@@ -137,10 +146,10 @@
   #searchInput{
     flex:1; min-width:220px;
     font-family:'Inter',sans-serif; font-size:13.5px;
-    padding:10px 14px; border:1px solid var(--line); border-radius:6px;
+    padding:10px 14px; border:1px solid var(--line); border-radius:8px;
     background:var(--card); color:var(--ink);
   }
-  #searchInput:focus{ outline:2px solid var(--rust); outline-offset:1px; }
+  #searchInput:focus{ outline:2px solid var(--navy); outline-offset:1px; }
   .search-hint{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft);}
 
   .grid{
@@ -159,23 +168,23 @@
     cursor:pointer;
     box-shadow:var(--shadow);
     position:relative;
-    transition:transform .12s, box-shadow .12s, border-color .12s;
+    transition:transform .14s, box-shadow .14s, border-color .14s;
     text-align:center;
   }
   .tc-card::before{
     content:"";
     position:absolute; left:0; top:14px; bottom:14px; width:3px;
-    background:var(--rust); border-radius:0 2px 2px 0;
-    opacity:.85;
+    background:var(--accent, var(--rust)); border-radius:0 3px 3px 0;
+    opacity:.9;
   }
   .tc-card:hover{
-    transform:translateY(-2px);
-    border-color:var(--rust);
-    box-shadow:0 6px 14px rgba(0,0,0,0.08);
+    transform:translateY(-3px);
+    border-color:var(--accent, var(--rust));
+    box-shadow:0 10px 20px -6px var(--accent-soft, rgba(79,70,229,0.25));
   }
   .tc-id{
-    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13.5px;
-    color:var(--navy-2); letter-spacing:.01em;
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13.5px;
+    color:var(--accent, var(--navy-2)); letter-spacing:.01em;
   }
 
   .empty{
@@ -199,17 +208,18 @@
   }
   .panel.show{ transform:translateX(0); }
   .panel-head{
-    background:var(--navy); color:var(--paper); padding:20px 22px;
+    background:linear-gradient(135deg, var(--accent, var(--navy)), color-mix(in srgb, var(--accent, var(--navy)) 60%, var(--navy-2)));
+    color:#fff; padding:20px 22px;
     position:relative;
   }
-  [data-theme="dark"] .panel-head{ background:#0C0E11; color:var(--ink); border-bottom:1px solid var(--line);}
+  [data-theme="dark"] .panel-head{ color:#fff; }
   .panel-close{
     position:absolute; top:16px; right:16px; background:none; border:none;
-    color:inherit; font-size:20px; cursor:pointer; opacity:.7; line-height:1; padding:4px;
+    color:inherit; font-size:20px; cursor:pointer; opacity:.75; line-height:1; padding:4px;
   }
   .panel-close:hover{ opacity:1; }
-  .panel-tcid{ font-family:'IBM Plex Mono',monospace; font-size:12px; opacity:.7; margin-bottom:6px;}
-  .panel-title{ font-family:'Zilla Slab',serif; font-size:19px; font-weight:600; line-height:1.35; padding-right:24px;}
+  .panel-tcid{ font-family:'IBM Plex Mono',monospace; font-size:12px; opacity:.8; margin-bottom:6px;}
+  .panel-title{ font-family:'Inter',sans-serif; font-size:19px; font-weight:700; line-height:1.35; padding-right:24px;}
   .panel-body{ padding:20px 22px 40px; }
   .field{ margin-bottom:18px; }
   .field-lbl{
@@ -270,7 +280,7 @@
 
 <div class="overlay" id="overlay" onclick="closePanel()"></div>
 <div class="panel" id="panel">
-  <div class="panel-head">
+  <div class="panel-head" id="panelHead">
     <button class="panel-close" onclick="closePanel()">✕</button>
     <p class="panel-tcid" id="panelTcId"></p>
     <p class="panel-title" id="panelTitle"></p>
@@ -302,6 +312,22 @@ function loadInitialData(){
 let activeScenario = "ALL";
 let searchTerm = "";
 
+const SCENARIO_COLORS = ['#6366F1','#EC4899','#F59E0B','#10B981','#06B6D4','#8B5CF6','#EF4444'];
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function colorForScenario(name){
+  const names = scenarioList().map(s=>s[0]);
+  const idx = Math.max(0, names.indexOf(name));
+  return SCENARIO_COLORS[idx % SCENARIO_COLORS.length];
+}
+function accentStyle(scenarioName){
+  const c = colorForScenario(scenarioName);
+  return `--accent:${c}; --accent-soft:${hexToRgba(c, document.body.getAttribute('data-theme')==='dark' ? 0.22 : 0.14)};`;
+}
+
 function toggleTheme(){
   const html = document.body;
   const isDark = html.getAttribute('data-theme') === 'dark';
@@ -320,7 +346,7 @@ function renderTabs(){
   const scenarios = scenarioList();
   let html = `<div class="tab ${activeScenario==='ALL'?'active':''}" onclick="setScenario('ALL')">ทั้งหมด <span class="count">${TC_DATA.length}</span></div>`;
   scenarios.forEach(([name,count])=>{
-    html += `<div class="tab ${activeScenario===name?'active':''}" onclick="setScenario('${name.replace(/'/g,"\\'")}')">${name} <span class="count">${count}</span></div>`;
+    html += `<div class="tab ${activeScenario===name?'active':''}" style="${accentStyle(name)}" onclick="setScenario('${name.replace(/'/g,"\\'")}')">${escapeHtml(name)} <span class="count">${count}</span></div>`;
   });
   tabsEl.innerHTML = html;
 }
@@ -355,7 +381,7 @@ function renderGrid(){
 
   grid.innerHTML = data.map((tc)=>{
     return `
-    <div class="tc-card" onclick="openPanel('${tc.issueKey}')">
+    <div class="tc-card" style="${accentStyle(tc.scenarioName)}" onclick="openPanel('${tc.issueKey}')">
       <div class="tc-id">${escapeHtml(tc.tcId)}</div>
     </div>`;
   }).join('');
@@ -369,6 +395,7 @@ function escapeHtml(str){
 function openPanel(issueKey){
   const tc = TC_DATA.find(t=>t.issueKey===issueKey);
   if(!tc) return;
+  document.getElementById('panelHead').setAttribute('style', accentStyle(tc.scenarioName));
   document.getElementById('panelTcId').textContent = tc.tcId;
   document.getElementById('panelTitle').textContent = tc.tcName;
 
