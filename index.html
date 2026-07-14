@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TC Tracker — Claim Prop Testing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3EFE6;
+    --paper-2:#EAE3D2;
+    --ink:#232323;
+    --ink-soft:#5B564C;
+    --navy:#1D2B45;
+    --navy-2:#28395A;
+    --rust:#B0472B;
+    --rust-soft:#E8C9BC;
+    --line:#D9D2C0;
+    --card:#FFFDF8;
+    --shadow: 0 1px 0 rgba(0,0,0,0.06);
+    --radius: 3px;
+  }
+  [data-theme="dark"]{
+    --paper:#14171C;
+    --paper-2:#1B1F26;
+    --ink:#EDEAE1;
+    --ink-soft:#9B968A;
+    --navy:#EDEAE1;
+    --navy-2:#C7C2B6;
+    --rust:#E1794F;
+    --rust-soft:#3A2A24;
+    --line:#33363E;
+    --card:#1D2128;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    transition:background .25s, color .25s;
+  }
+  .topbar{
+    background:var(--navy);
+    color:var(--paper);
+    padding:22px 28px 18px;
+    position:relative;
+    overflow:hidden;
+  }
+  [data-theme="dark"] .topbar{ background:#0C0E11; color:var(--ink); border-bottom:1px solid var(--line);}
+  .topbar::after{
+    content:"";
+    position:absolute; right:-40px; top:-40px; width:180px; height:180px;
+    border:1px solid rgba(243,239,230,0.12); border-radius:50%;
+  }
+  .topbar-inner{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; position:relative; z-index:1;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    opacity:.65; margin:0 0 6px;
+  }
+  h1{
+    font-family:'Zilla Slab',serif; font-weight:600;
+    font-size:28px; margin:0; letter-spacing:.01em;
+  }
+  .stamp-toggle{
+    display:flex; align-items:center; gap:10px;
+    font-family:'IBM Plex Mono',monospace; font-size:12px;
+  }
+  #themeBtn{
+    background:transparent; border:1px solid rgba(243,239,230,0.4); color:inherit;
+    padding:7px 12px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:12px;
+  }
+  [data-theme="dark"] #themeBtn{ border-color: var(--line); }
+  #themeBtn:hover{ background:rgba(243,239,230,0.08); }
+
+  .status-strip{
+    display:flex; gap:22px; margin-top:16px; flex-wrap:wrap;
+  }
+  .status-strip .metric{ }
+  .status-strip .num{ font-family:'Zilla Slab',serif; font-size:22px; font-weight:600; line-height:1;}
+  .status-strip .lbl{ font-size:11px; opacity:.7; margin-top:3px; font-family:'IBM Plex Mono',monospace; letter-spacing:.05em;}
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:24px 28px 60px; }
+
+  .tabs{
+    display:flex; gap:2px; flex-wrap:wrap; margin-bottom:0;
+    border-bottom:2px solid var(--line);
+  }
+  .tab{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    padding:10px 16px 9px;
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-bottom:none;
+    border-radius:6px 6px 0 0;
+    cursor:pointer;
+    color:var(--ink-soft);
+    position:relative;
+    top:2px;
+    white-space:nowrap;
+  }
+  .tab .count{
+    display:inline-block; margin-left:6px; padding:1px 6px;
+    background:var(--line); border-radius:999px; font-size:10.5px; color:var(--ink);
+  }
+  .tab.active{
+    background:var(--card); color:var(--ink); border-color:var(--line);
+    border-bottom:2px solid var(--card); font-weight:600;
+  }
+  .tab.active .count{ background:var(--rust); color:#fff; }
+  .tab:hover:not(.active){ color:var(--ink); }
+
+  .search-row{
+    display:flex; gap:10px; align-items:center; margin:18px 0 16px; flex-wrap:wrap;
+  }
+  #searchInput{
+    flex:1; min-width:220px;
+    font-family:'Inter',sans-serif; font-size:13.5px;
+    padding:10px 14px; border:1px solid var(--line); border-radius:6px;
+    background:var(--card); color:var(--ink);
+  }
+  #searchInput:focus{ outline:2px solid var(--rust); outline-offset:1px; }
+  .search-hint{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(230px,1fr));
+    gap:12px;
+  }
+  .grid{
+    grid-template-columns:repeat(auto-fill, minmax(150px,1fr));
+  }
+  .tc-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 12px;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+    position:relative;
+    transition:transform .12s, box-shadow .12s, border-color .12s;
+    text-align:center;
+  }
+  .tc-card::before{
+    content:"";
+    position:absolute; left:0; top:14px; bottom:14px; width:3px;
+    background:var(--rust); border-radius:0 2px 2px 0;
+    opacity:.85;
+  }
+  .tc-card:hover{
+    transform:translateY(-2px);
+    border-color:var(--rust);
+    box-shadow:0 6px 14px rgba(0,0,0,0.08);
+  }
+  .tc-id{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13.5px;
+    color:var(--navy-2); letter-spacing:.01em;
+  }
+
+  .empty{
+    padding:40px 20px; text-align:center; color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace; font-size:13px;
+    border:1px dashed var(--line); border-radius:8px;
+  }
+
+  /* side panel */
+  .overlay{
+    position:fixed; inset:0; background:rgba(20,17,12,0.35);
+    opacity:0; pointer-events:none; transition:opacity .2s; z-index:40;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .panel{
+    position:fixed; top:0; right:0; height:100%; width:min(420px, 92vw);
+    background:var(--card); border-left:1px solid var(--line);
+    box-shadow:-8px 0 24px rgba(0,0,0,0.12);
+    transform:translateX(100%); transition:transform .25s ease;
+    z-index:41; overflow-y:auto;
+  }
+  .panel.show{ transform:translateX(0); }
+  .panel-head{
+    background:var(--navy); color:var(--paper); padding:20px 22px;
+    position:relative;
+  }
+  [data-theme="dark"] .panel-head{ background:#0C0E11; color:var(--ink); border-bottom:1px solid var(--line);}
+  .panel-close{
+    position:absolute; top:16px; right:16px; background:none; border:none;
+    color:inherit; font-size:20px; cursor:pointer; opacity:.7; line-height:1; padding:4px;
+  }
+  .panel-close:hover{ opacity:1; }
+  .panel-tcid{ font-family:'IBM Plex Mono',monospace; font-size:12px; opacity:.7; margin-bottom:6px;}
+  .panel-title{ font-family:'Zilla Slab',serif; font-size:19px; font-weight:600; line-height:1.35; padding-right:24px;}
+  .panel-body{ padding:20px 22px 40px; }
+  .field{ margin-bottom:18px; }
+  .field-lbl{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--ink-soft); margin-bottom:5px;
+  }
+  .field-val{ font-size:14px; line-height:1.55; color:var(--ink); }
+  .badge-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .badge{
+    font-family:'IBM Plex Mono',monospace; font-size:11px;
+    padding:4px 10px; border-radius:999px; border:1px solid var(--line); color:var(--ink-soft);
+  }
+
+  @media (max-width:600px){
+    .topbar{ padding:18px 18px 14px; }
+    .wrap{ padding:18px 16px 50px; }
+    h1{ font-size:22px; }
+  }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div>
+      <p class="eyebrow">NCBS · Claim Prop Testing</p>
+      <h1>Test Case Tracker</h1>
+    </div>
+    <div class="stamp-toggle">
+      <button id="themeBtn" onclick="toggleTheme()">🌙 Dark</button>
+    </div>
+  </div>
+  <div class="status-strip">
+    <div class="metric"><div class="num" id="totalCount">0</div><div class="lbl">TC ทั้งหมด</div></div>
+    <div class="metric"><div class="num" id="scenarioCount">0</div><div class="lbl">Scenario</div></div>
+    <div class="metric"><div class="num" id="inProgressCount">0</div><div class="lbl">In Progress</div></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs" id="tabs"></div>
+
+  <div class="search-row">
+    <input id="searchInput" type="text" placeholder="ค้นหา Test Case ID หรือชื่อ...">
+    <span class="search-hint" id="resultHint"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="emptyState" style="display:none;">ไม่พบ Test Case ที่ตรงกับคำค้นหา</div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+<div class="panel" id="panel">
+  <div class="panel-head">
+    <button class="panel-close" onclick="closePanel()">✕</button>
+    <p class="panel-tcid" id="panelTcId"></p>
+    <p class="panel-title" id="panelTitle"></p>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<script>
+const TC_DATA = [{"tcId": "CLM-Fire-01_1.1", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (FIRE) No 1.1] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-Fire-01", "scenarioName": "Claim Prop (FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "In Progress", "issueKey": "NCBS-67865"}, {"tcId": "CLM-Fire-02_2.2", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (FIRE) No 2.2] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-Fire-02", "scenarioName": "Claim Prop (FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67870"}, {"tcId": "CLM-Fire-05_5.2", "tcName": "อื่น ๆ - ตั้ง reserve fee / deduct / salvage - ทำจ่าย แบบไม่ offset", "summary": "[Claim Prop (FIRE) No 5.2] อื่น ๆ - ตั้ง reserve fee / deduct / salvage - ทำจ่าย แบบไม่ offset", "description": "ทำจ่าย แบบไม่ offset", "scenarioId": "CLM-Fire-05", "scenarioName": "Claim Prop (FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67882"}, {"tcId": "CLM-Fire-05_5.3", "tcName": "อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบ offset", "summary": "[Claim Prop (FIRE) No 5.3] อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบ offset", "description": "ทำจ่าย แบบ offset", "scenarioId": "CLM-Fire-05", "scenarioName": "Claim Prop (FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67883"}, {"tcId": "CLM-Fire-05_5.4", "tcName": "อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบไม่ offset", "summary": "[Claim Prop (FIRE) No 5.4] อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบไม่ offset", "description": "ทำจ่าย แบบไม่ offset", "scenarioId": "CLM-Fire-05", "scenarioName": "Claim Prop (FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67884"}, {"tcId": "CLM-Fire-06_6.2", "tcName": "อื่น ๆ - reserve 2 location ใน 1 policy - ทำจ่าย ปิด 2 โลเคชั่น ไม่พร้อมกัน", "summary": "[Claim Prop (FIRE) No 6.2] อื่น ๆ - reserve 2 location ใน 1 policy - ทำจ่าย ปิด 2 โลเคชั่น ไม่พร้อมกัน", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย ปิด 2 โลเคชั่น ไม่พร้อมกัน", "scenarioId": "CLM-Fire-06", "scenarioName": "Claim Prop (FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67886"}, {"tcId": "CLM-Fire-06_6.3", "tcName": "อื่น ๆ - reserve 2 location ใน 1 policy - *คนละภัย - หลังจากนั้น ทำจ่าย ปิด 2 โลเคชั่น พร้อมกัน", "summary": "[Claim Prop (FIRE) No 6.3] อื่น ๆ - reserve 2 location ใน 1 policy - *คนละภัย - หลังจากนั้น ทำจ่าย ปิด 2 โลเคชั่น พร้อมกัน", "description": "เปิด reserve เลือกทุน coverage *คนละภัย - หลังจากนั้น ทำจ่าย ปิด 2 โลเคชั่น พร้อมกัน", "scenarioId": "CLM-Fire-06", "scenarioName": "Claim Prop (FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67887"}, {"tcId": "CLM-Fire-06_6.4", "tcName": "อื่น ๆ - reserve 2 location ใน 1 policy - *คนละภัย - หลังจากนั้น ทำจ่าย 2 โลเคชั่น พร้อมกัน 2-3 ครั้งจึงค่อยปิด", "summary": "[Claim Prop (FIRE) No 6.4] อื่น ๆ - reserve 2 location ใน 1 policy - *คนละภัย - หลังจากนั้น ทำจ่าย 2 โลเคชั่น พร้อมกัน 2-3 ครั้งจึงค่อยปิด", "description": "เปิด reserve เลือกทุน coverage *คนละภัย - หลังจากนั้น ทำจ่าย 2 โลเคชั่น พร้อมกัน 2-3 ครั้งจึงค่อยปิด", "scenarioId": "CLM-Fire-06", "scenarioName": "Claim Prop (FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67888"}, {"tcId": "CLM-BI-Fire-01_1.1", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (BI-FIRE) No 1.1] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-Fire-01", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67889"}, {"tcId": "CLM-BI-Fire-02_2.3", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (BI-FIRE) No 2.3] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-Fire-02", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67895"}, {"tcId": "CLM-BI-Fire-02_2.4", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-FIRE) No 2.4] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-Fire-02", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67896"}, {"tcId": "CLM-BI-Fire-03_3.1", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (BI-FIRE) No 3.1] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-Fire-03", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67897"}, {"tcId": "CLM-BI-Fire-03_3.2", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-FIRE) No 3.2] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-Fire-03", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67898"}, {"tcId": "CLM-BI-Fire-03_3.3", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (BI-FIRE) No 3.3] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-Fire-03", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67899"}, {"tcId": "CLM-BI-Fire-03_3.4", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-FIRE) No 3.4] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-Fire-03", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67900"}, {"tcId": "CLM-BI-Fire-04_4.2", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-FIRE) No 4.2] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-Fire-04", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67902"}, {"tcId": "CLM-BI-Fire-04_4.3", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (BI-FIRE) No 4.3] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-Fire-04", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67903"}, {"tcId": "CLM-BI-Fire-04_4.4", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-FIRE) No 4.4] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-Fire-04", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67904"}, {"tcId": "CLM-BI-Fire-05_5.4", "tcName": "อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบไม่ offset", "summary": "[Claim Prop (BI-FIRE) No 5.4] อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบไม่ offset", "description": "ทำจ่าย แบบไม่ offset", "scenarioId": "CLM-BI-Fire-05", "scenarioName": "Claim Prop (BI-FIRE)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67908"}, {"tcId": "CLM-IAR-01_1.1", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (IAR) No 1.1] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-01", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67909"}, {"tcId": "CLM-IAR-01_1.2", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (IAR) No 1.2] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-01", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67910"}, {"tcId": "CLM-IAR-01_1.3", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (IAR) No 1.3] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-IAR-01", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67911"}, {"tcId": "CLM-IAR-01_1.4", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (IAR) No 1.4] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-IAR-01", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67912"}, {"tcId": "CLM-IAR-02_2.1", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (IAR) No 2.1] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-02", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67913"}, {"tcId": "CLM-IAR-02_2.2", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (IAR) No 2.2] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-02", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67914"}, {"tcId": "CLM-IAR-02_2.3", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (IAR) No 2.3] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-IAR-02", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67915"}, {"tcId": "CLM-IAR-02_2.4", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (IAR) No 2.4] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-IAR-02", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67916"}, {"tcId": "CLM-IAR-03_3.1", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (IAR) No 3.1] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-03", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67917"}, {"tcId": "CLM-IAR-03_3.2", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (IAR) No 3.2] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-03", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67918"}, {"tcId": "CLM-IAR-03_3.3", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (IAR) No 3.3] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-IAR-03", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67919"}, {"tcId": "CLM-IAR-05_5.1", "tcName": "อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 1 ครั้ง ปิดจบ (5.1)  ตั้ง reserve เงิน ตปท. เลือกทุน coverage", "summary": "[Claim Prop (IAR) No 5.1] อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 1 ครั้ง ปิดจบ (5.1)  ตั้ง reserve เงิน ตปท. เลือกทุน coverage", "description": "ตั้ง reserve เงิน ตปท. เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-05", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67925"}, {"tcId": "CLM-IAR-05_5.2", "tcName": "อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 1 ครั้ง ปิดจบ (5.2)  เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage", "summary": "[Claim Prop (IAR) No 5.2] อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 1 ครั้ง ปิดจบ (5.2)  เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage", "description": "เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-05", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67926"}, {"tcId": "CLM-IAR-06_6.1", "tcName": "อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (6.1) ตั้ง reserve เงิน ตปท. เลือกทุน coverage", "summary": "[Claim Prop (IAR) No 6.1] อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (6.1) ตั้ง reserve เงิน ตปท. เลือกทุน coverage", "description": "ตั้ง reserve เงิน ตปท. เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-06", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67927"}, {"tcId": "CLM-IAR-06_6.2", "tcName": "อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (6.2) เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage", "summary": "[Claim Prop (IAR) No 6.2] อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (6.2) เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage", "description": "เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-IAR-06", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67928"}, {"tcId": "CLM-IAR-07_7.1", "tcName": "อื่น ๆ - ตั้ง reserve fee / deduct - ทำจ่าย แบบ offset", "summary": "[Claim Prop (IAR) No 7.1] อื่น ๆ - ตั้ง reserve fee / deduct - ทำจ่าย แบบ offset", "description": "ทำจ่าย แบบ offset", "scenarioId": "CLM-IAR-07", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67929"}, {"tcId": "CLM-IAR-07_7.2", "tcName": "อื่น ๆ - ตั้ง reserve fee / deduct - ทำจ่าย แบบไม่ offset", "summary": "[Claim Prop (IAR) No 7.2] อื่น ๆ - ตั้ง reserve fee / deduct - ทำจ่าย แบบไม่ offset", "description": "ทำจ่าย แบบไม่ offset", "scenarioId": "CLM-IAR-07", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67930"}, {"tcId": "CLM-IAR-07_7.3", "tcName": "อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบ offset", "summary": "[Claim Prop (IAR) No 7.3] อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบ offset", "description": "ทำจ่าย แบบ offset", "scenarioId": "CLM-IAR-07", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67931"}, {"tcId": "CLM-IAR-07_7.4", "tcName": "อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบไม่ offset", "summary": "[Claim Prop (IAR) No 7.4] อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบไม่ offset", "description": "ทำจ่าย แบบไม่ offset", "scenarioId": "CLM-IAR-07", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67932"}, {"tcId": "CLM-Fire-08_8.1", "tcName": "อื่น ๆ - reserve 2 location ใน 1 policy - ทำจ่าย ปิด 2 โลเคชั่น พร้อมกัน", "summary": "[Claim Prop (IAR) No 8.1] อื่น ๆ - reserve 2 location ใน 1 policy - ทำจ่าย ปิด 2 โลเคชั่น พร้อมกัน", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย ปิด 2 โลเคชั่น พร้อมกัน", "scenarioId": "CLM-IAR-08", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67933"}, {"tcId": "CLM-Fire-08_8.2", "tcName": "อื่น ๆ - reserve 2 location ใน 1 policy - ทำจ่าย ปิด 2 โลเคชั่น ไม่พร้อมกัน", "summary": "[Claim Prop (IAR) No 8.2] อื่น ๆ - reserve 2 location ใน 1 policy - ทำจ่าย ปิด 2 โลเคชั่น ไม่พร้อมกัน", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย ปิด 2 โลเคชั่น ไม่พร้อมกัน", "scenarioId": "CLM-IAR-08", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67934"}, {"tcId": "CLM-Fire-08_8.3", "tcName": "อื่น ๆ - reserve 2 location ใน 1 policy - *คนละภัย - หลังจากนั้น ทำจ่าย ปิด 2 โลเคชั่น พร้อมกัน", "summary": "[Claim Prop (IAR) No 8.3] อื่น ๆ - reserve 2 location ใน 1 policy - *คนละภัย - หลังจากนั้น ทำจ่าย ปิด 2 โลเคชั่น พร้อมกัน", "description": "เปิด reserve เลือกทุน coverage *คนละภัย - หลังจากนั้น ทำจ่าย ปิด 2 โลเคชั่น พร้อมกัน", "scenarioId": "CLM-IAR-08", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67935"}, {"tcId": "CLM-Fire-08_8.4", "tcName": "อื่น ๆ - reserve 2 location ใน 1 policy - *คนละภัย - หลังจากนั้น ทำจ่าย 2 โลเคชั่น พร้อมกัน 2-3 ครั้งจึงค่อยปิด", "summary": "[Claim Prop (IAR) No 8.4] อื่น ๆ - reserve 2 location ใน 1 policy - *คนละภัย - หลังจากนั้น ทำจ่าย 2 โลเคชั่น พร้อมกัน 2-3 ครั้งจึงค่อยปิด", "description": "เปิด reserve เลือกทุน coverage *คนละภัย - หลังจากนั้น ทำจ่าย 2 โลเคชั่น พร้อมกัน 2-3 ครั้งจึงค่อยปิด", "scenarioId": "CLM-IAR-08", "scenarioName": "Claim Prop (IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67936"}, {"tcId": "CLM-BI-IAR-01_1.1", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 1.1] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-01", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67938"}, {"tcId": "CLM-BI-IAR-01_1.2", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 1.2] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-01", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67939"}, {"tcId": "CLM-BI-IAR-01_1.3", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 1.3] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-IAR-01", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67940"}, {"tcId": "CLM-BI-IAR-01_1.4", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 1.4] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-IAR-01", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67941"}, {"tcId": "CLM-BI-IAR-02_2.1", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 2.1] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-02", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67942"}, {"tcId": "CLM-BI-IAR-02_2.2", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 2.2] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-02", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67943"}, {"tcId": "CLM-BI-IAR-02_2.3", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 2.3] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-IAR-02", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67944"}, {"tcId": "CLM-BI-IAR-02_2.4", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 2.4] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-IAR-02", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67945"}, {"tcId": "CLM-BI-IAR-03_3.1", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 3.1] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-03", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67946"}, {"tcId": "CLM-BI-IAR-03_3.2", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 3.2] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-03", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67947"}, {"tcId": "CLM-BI-IAR-03_3.3", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 3.3] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-IAR-03", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67948"}, {"tcId": "CLM-BI-IAR-03_3.4", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 3.4] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-IAR-03", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67949"}, {"tcId": "CLM-BI-IAR-04_4.1", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 4.1] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-04", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67950"}, {"tcId": "CLM-BI-IAR-04_4.2", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 4.2] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-04", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67951"}, {"tcId": "CLM-BI-IAR-04_4.3", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 4.3] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-IAR-04", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67952"}, {"tcId": "CLM-BI-IAR-04_4.4", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 4.4] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-BI-IAR-04", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67953"}, {"tcId": "CLM-BI-IAR-05_5.1", "tcName": "อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 1 ครั้ง ปิดจบ (5.1)  ตั้ง reserve เงิน ตปท. เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 5.1] อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 1 ครั้ง ปิดจบ (5.1)  ตั้ง reserve เงิน ตปท. เลือกทุน coverage", "description": "ตั้ง reserve เงิน ตปท. เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-05", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67954"}, {"tcId": "CLM-BI-IAR-05_5.2", "tcName": "อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 1 ครั้ง ปิดจบ (5.2)  เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 5.2] อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 1 ครั้ง ปิดจบ (5.2)  เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage", "description": "เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-05", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67955"}, {"tcId": "CLM-BI-IAR-06_6.1", "tcName": "อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (6.1) ตั้ง reserve เงิน ตปท. เลือกทุน coverage", "summary": "[Claim Prop (BI-IAR) No 6.1] อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (6.1) ตั้ง reserve เงิน ตปท. เลือกทุน coverage", "description": "ตั้ง reserve เงิน ตปท. เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-06", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67956"}, {"tcId": "CLM-BI-IAR-06_6.2", "tcName": "อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (6.2) เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage", "summary": "[Claim Prop (BI-IAR) No 6.2] อื่นๆ กธ. งานCo-ins  (% BKI ไม่ 100%) [reserve เงิน ตปท] - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (6.2) เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage", "description": "เปิด reserve  เงิน ตปท. เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-BI-IAR-06", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67957"}, {"tcId": "CLM-BI-IAR-07_7.1", "tcName": "อื่น ๆ - ตั้ง reserve fee / deduct - ทำจ่าย แบบ offset", "summary": "[Claim Prop (BI-IAR) No 7.1] อื่น ๆ - ตั้ง reserve fee / deduct - ทำจ่าย แบบ offset", "description": "ทำจ่าย แบบ offset", "scenarioId": "CLM-BI-IAR-07", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67958"}, {"tcId": "CLM-BI-IAR-07_7.2", "tcName": "อื่น ๆ - ตั้ง reserve fee / deduct - ทำจ่าย แบบไม่ offset", "summary": "[Claim Prop (BI-IAR) No 7.2] อื่น ๆ - ตั้ง reserve fee / deduct - ทำจ่าย แบบไม่ offset", "description": "ทำจ่าย แบบไม่ offset", "scenarioId": "CLM-BI-IAR-07", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67959"}, {"tcId": "CLM-BI-IAR-07_7.3", "tcName": "อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบ offset", "summary": "[Claim Prop (BI-IAR) No 7.3] อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบ offset", "description": "ทำจ่าย แบบ offset", "scenarioId": "CLM-BI-IAR-07", "scenarioName": "Claim Prop (BI-IAR)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67960"}, {"tcId": "CLM-LH-01_1.3", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (LH) No 1.3] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-LH-01", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67964"}, {"tcId": "CLM-LH-01_1.4", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (LH) No 1.4] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 1 ครั้ง ปิดจบ (1.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-LH-01", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67965"}, {"tcId": "CLM-LH-02_2.1", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (LH) No 2.1] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-LH-02", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67966"}, {"tcId": "CLM-LH-02_2.2", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (LH) No 2.2] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-LH-02", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67967"}, {"tcId": "CLM-LH-02_2.3", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (LH) No 2.3] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-LH-02", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67968"}, {"tcId": "CLM-LH-02_2.4", "tcName": "กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (LH) No 2.4] กธ. งานลีดเดอร์ 100% - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (2.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-LH-02", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67969"}, {"tcId": "CLM-LH-03_3.1", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (LH) No 3.1] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-LH-03", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67970"}, {"tcId": "CLM-LH-03_3.2", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (LH) No 3.2] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-LH-03", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67971"}, {"tcId": "CLM-LH-03_3.3", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (LH) No 3.3] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-LH-03", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67972"}, {"tcId": "CLM-LH-03_3.4", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (LH) No 3.4] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 1 ครั้ง ปิดจบ (3.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-LH-03", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67973"}, {"tcId": "CLM-LH-04_4.1", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.1) เปิด reserve เลือกทุน coverage", "summary": "[Claim Prop (LH) No 4.1] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.1) เปิด reserve เลือกทุน coverage", "description": "เปิด reserve เลือกทุน coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-LH-04", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67974"}, {"tcId": "CLM-LH-04_4.2", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.2) เปิด reserve เลือกทุน ไม่ coverage", "summary": "[Claim Prop (LH) No 4.2] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.2) เปิด reserve เลือกทุน ไม่ coverage", "description": "เปิด reserve เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย", "scenarioId": "CLM-LH-04", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67975"}, {"tcId": "CLM-LH-04_4.3", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.3) เปิด reserve เกิน limit เลือกทุน coverage", "summary": "[Claim Prop (LH) No 4.3] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.3) เปิด reserve เกิน limit เลือกทุน coverage", "description": "เปิด reserve เกิน limit เลือกทุน coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-LH-04", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67976"}, {"tcId": "CLM-LH-04_4.4", "tcName": "กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "summary": "[Claim Prop (LH) No 4.4] กธ. งานCo-ins (% BKI ไม่ 100%) - ทดสอบจ่าย 2 ครั้ง หรือมากกว่า (4.4) เปิด reserve เกิน limit เลือกทุน ไม่ coverage", "description": "เปิด reserve เกิน limit เลือกทุน ไม่ coverage - หลังจากนั้น ทำจ่าย เกิน limit", "scenarioId": "CLM-LH-04", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67977"}, {"tcId": "CLM-LH-05_5.1", "tcName": "อื่น ๆ - ตั้ง reserve fee / deduct / salvage - ทำจ่าย แบบ offset", "summary": "[Claim Prop (LH) No 5.1] อื่น ๆ - ตั้ง reserve fee / deduct / salvage - ทำจ่าย แบบ offset", "description": "ทำจ่าย แบบ offset", "scenarioId": "CLM-LH-05", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67978"}, {"tcId": "CLM-LH-05_5.2", "tcName": "อื่น ๆ - ตั้ง reserve fee / deduct / salvage - ทำจ่าย แบบไม่ offset", "summary": "[Claim Prop (LH) No 5.2] อื่น ๆ - ตั้ง reserve fee / deduct / salvage - ทำจ่าย แบบไม่ offset", "description": "ทำจ่าย แบบไม่ offset", "scenarioId": "CLM-LH-05", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67979"}, {"tcId": "CLM-LH-05_5.3", "tcName": "อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบ offset", "summary": "[Claim Prop (LH) No 5.3] อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบ offset", "description": "ทำจ่าย แบบ offset", "scenarioId": "CLM-LH-05", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67980"}, {"tcId": "CLM-LH-05_5.4", "tcName": "อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบไม่ offset", "summary": "[Claim Prop (LH) No 5.4] อื่น ๆ - ตั้ง reserve recovery - ทำจ่าย แบบไม่ offset", "description": "ทำจ่าย แบบไม่ offset", "scenarioId": "CLM-LH-05", "scenarioName": "Claim Prop (LH)", "phase": "Pre-E2E", "priority": "Medium", "tester": "CLM_Prop_Thanawat", "status": "New", "issueKey": "NCBS-67981"}]
+;
+
+let activeScenario = "ALL";
+let searchTerm = "";
+
+function toggleTheme(){
+  const html = document.body;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeBtn').textContent = isDark ? '🌙 Dark' : '☀️ Light';
+}
+
+function scenarioList(){
+  const map = {};
+  TC_DATA.forEach(tc => { map[tc.scenarioName] = (map[tc.scenarioName]||0) + 1; });
+  return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0]));
+}
+
+function renderTabs(){
+  const tabsEl = document.getElementById('tabs');
+  const scenarios = scenarioList();
+  let html = `<div class="tab ${activeScenario==='ALL'?'active':''}" onclick="setScenario('ALL')">ทั้งหมด <span class="count">${TC_DATA.length}</span></div>`;
+  scenarios.forEach(([name,count])=>{
+    html += `<div class="tab ${activeScenario===name?'active':''}" onclick="setScenario('${name.replace(/'/g,"\\'")}')">${name} <span class="count">${count}</span></div>`;
+  });
+  tabsEl.innerHTML = html;
+}
+
+function setScenario(name){
+  activeScenario = name;
+  renderTabs();
+  renderGrid();
+}
+
+function filteredData(){
+  return TC_DATA.filter(tc=>{
+    const matchScenario = activeScenario==='ALL' || tc.scenarioName===activeScenario;
+    const term = searchTerm.trim().toLowerCase();
+    const matchSearch = !term || tc.tcId.toLowerCase().includes(term) || tc.tcName.toLowerCase().includes(term);
+    return matchScenario && matchSearch;
+  });
+}
+
+function renderGrid(){
+  const data = filteredData();
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('emptyState');
+  document.getElementById('resultHint').textContent = `${data.length} รายการ`;
+
+  if(data.length===0){
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = data.map((tc)=>{
+    return `
+    <div class="tc-card" onclick="openPanel('${tc.issueKey}')">
+      <div class="tc-id">${escapeHtml(tc.tcId)}</div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(str){
+  if(!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function openPanel(issueKey){
+  const tc = TC_DATA.find(t=>t.issueKey===issueKey);
+  if(!tc) return;
+  document.getElementById('panelTcId').textContent = tc.tcId;
+  document.getElementById('panelTitle').textContent = tc.tcName;
+
+  const body = document.getElementById('panelBody');
+  body.innerHTML = `
+    <div class="field">
+      <div class="field-lbl">Summary</div>
+      <div class="field-val">${escapeHtml(tc.summary)}</div>
+    </div>
+    ${tc.description ? `<div class="field">
+      <div class="field-lbl">Description</div>
+      <div class="field-val">${escapeHtml(tc.description)}</div>
+    </div>` : ''}
+    <div class="field">
+      <div class="field-lbl">Test Scenario</div>
+      <div class="field-val">${escapeHtml(tc.scenarioId)} — ${escapeHtml(tc.scenarioName)}</div>
+    </div>
+    <div class="field">
+      <div class="field-lbl">รายละเอียด</div>
+      <div class="badge-row">
+        <span class="badge">Phase: ${escapeHtml(tc.phase||'-')}</span>
+        <span class="badge">Priority: ${escapeHtml(tc.priority||'-')}</span>
+        <span class="badge">Status: ${escapeHtml(tc.status||'-')}</span>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-lbl">Tester</div>
+      <div class="field-val">${escapeHtml(tc.tester||'-')}</div>
+    </div>
+    <div class="field">
+      <div class="field-lbl">Jira Issue Key</div>
+      <div class="field-val">${escapeHtml(tc.issueKey)}</div>
+    </div>
+  `;
+
+  document.getElementById('panel').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closePanel(){
+  document.getElementById('panel').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape') closePanel();
+});
+
+document.getElementById('searchInput').addEventListener('input', (e)=>{
+  searchTerm = e.target.value;
+  renderGrid();
+});
+
+function init(){
+  document.getElementById('totalCount').textContent = TC_DATA.length;
+  document.getElementById('scenarioCount').textContent = scenarioList().length;
+  document.getElementById('inProgressCount').textContent = TC_DATA.filter(t=>t.status==='In Progress').length;
+  renderTabs();
+  renderGrid();
+}
+init();
+</script>
+</body>
+</html>
